@@ -51,7 +51,7 @@
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
     
-    // CARGAR SPRITE DEL JUGADOR
+    // CARGAR EL SPRITE DEL JUGADOR
     const playerSpriteImg = new Image();
     playerSpriteImg.src = 'PersonSpriteheh.png'; // Asegúrate de que el archivo esté en la misma carpeta
 
@@ -79,19 +79,19 @@
     
     function getPlayerName(id) {
         if (!id) return "???";
-        return id.substring(0, 4); // Siempre retorna los 4 dígitos iniciales
+        return id.substring(0, 4); // Simplificado a solo los 4 dígitos
     }
 
     peer.on('open', id => {
         myId = id;
         document.getElementById('my-id').innerText = id;
-        players[id] = { x: 1.5, y: 1.5, color: '#3498db', isDead: false, id: id };
+        players[id] = { id: id, x: 1.5, y: 1.5, color: '#3498db', isDead: false };
     });
 
     peer.on('connection', conn => {
         conn.on('open', () => {
             connections[conn.peer] = conn;
-            players[conn.peer] = { x: 1.5, y: 1.5, color: '#e67e22', isDead: false, id: conn.peer };
+            players[conn.peer] = { id: conn.peer, x: 1.5, y: 1.5, color: '#e67e22', isDead: false };
             addChatMessage("Sistema", `${getPlayerName(conn.peer)} se unió.`);
             updateLobbyUI();
             syncToAll();
@@ -213,7 +213,6 @@
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // --- MOVIMIENTO Y RENDER ---
     let posX = 1.5, posY = 1.5, dirX = 1, dirY = 0, planeX = 0, planeY = 0.66;
     let moveSpeed = 0.08, rotSpeed = 0.05;
 
@@ -316,30 +315,32 @@
         }
 
         let sprites = [];
-        if(slenderman.active) sprites.push({...slenderman, color:"#111", sX:0.5, sY:1.8, isMonster: true});
-        for(let id in players) if(id !== myId && !players[id].isDead) sprites.push({...players[id], sX:0.5, sY:1.0, isPlayer: true});
+        if(slenderman.active) sprites.push({...slenderman, type: 'slender', sX:0.5, sY:1.8});
+        for(let id in players) if(id !== myId && !players[id].isDead) sprites.push({...players[id], type: 'player', sX:0.8, sY:0.8});
         
         sprites.sort((a,b) => Math.hypot(posX-b.x, posY-b.y) - Math.hypot(posX-a.x, posY-a.y));
         sprites.forEach(s => {
             let relX = s.x - posX, relY = s.y - posY;
             let invDet = 1.0 / (planeX * dirY - dirX * planeY);
             let tx = invDet * (dirY * relX - dirX * relY), ty = invDet * (-planeY * relX + planeX * relY);
+            
             if(ty > 0.1) {
                 let sx = Math.floor((w/2) * (1 + tx / ty));
                 let sh = Math.abs(Math.floor(h / ty)) * s.sY, sw = Math.abs(Math.floor(h / ty)) * s.sX;
+                
                 if(sx > 0 && sx < w && ty < zBuffer[sx]) {
-                    if (s.isPlayer) {
+                    if(s.type === 'player') {
                         // DIBUJAR SPRITE DEL JUGADOR
                         ctx.drawImage(playerSpriteImg, sx - sw/2, h/2 - sh/2, sw, sh);
                         
-                        // DIBUJAR NOMBRE ARRIBA DEL JUGADOR
+                        // DIBUJAR NOMBRE (4 DÍGITOS) SOBRE EL JUGADOR
                         ctx.fillStyle = "white";
-                        ctx.font = `${Math.max(10, 20 / ty)}px Courier New`;
+                        ctx.font = "bold 14px Arial";
                         ctx.textAlign = "center";
-                        ctx.fillText(getPlayerName(s.id), sx, h/2 - sh/2 - 5);
+                        ctx.fillText(s.id.substring(0, 4), sx, h/2 - sh/2 - 10);
                     } else {
-                        // Slenderman o decorativos (cuadro negro)
-                        ctx.fillStyle = s.color || "#000";
+                        // DIBUJAR SLENDERMAN (RECUADRO NEGRO)
+                        ctx.fillStyle = "#111";
                         ctx.fillRect(sx - sw/2, h/2 - sh/2, sw, sh);
                     }
                 }
